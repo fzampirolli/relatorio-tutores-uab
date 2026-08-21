@@ -18,7 +18,17 @@ import os
 import sys
 import time
 import traceback
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
+
+try:
+    from zoneinfo import ZoneInfo
+    FUSO_BRASIL = ZoneInfo("America/Sao_Paulo")
+except Exception:
+    # Fallback se o banco de fusos IANA não estiver instalado no servidor.
+    # Brasil (região de São Paulo) não observa mais horário de verão desde 2019,
+    # então UTC-3 fixo é correto o ano todo.
+    FUSO_BRASIL = timezone(timedelta(hours=-3))
 
 BASE_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(BASE_DIR))
@@ -32,7 +42,7 @@ LOG_PATH = BASE_DIR / "logs" / "execucoes.log"
 
 def log(status: str, detalhes: str) -> None:
     LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
-    timestamp = time.strftime("%Y-%m-%dT%H:%M:%S%z")
+    timestamp = datetime.now(FUSO_BRASIL).strftime("%Y-%m-%dT%H:%M:%S%z")
     with open(LOG_PATH, "a", encoding="utf-8") as f:
         f.write(f"{timestamp} | STATUS={status} | {detalhes}\n")
 
@@ -67,7 +77,7 @@ def processar(caminho_zip: str, mes_referencia: int, ano_referencia: int,
         relatorios.append(relatorio)
 
     resumo = aggregator.agregar_lote(relatorios)
-    gerado_em = time.strftime("%d/%m/%Y %H:%M")
+    gerado_em = datetime.now(FUSO_BRASIL).strftime("%d/%m/%Y %H:%M")
     html = report_builder.construir_html(
         relatorios, resumo, mes_referencia, ano_referencia, nome_lote, gerado_em
     )
