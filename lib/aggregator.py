@@ -32,6 +32,27 @@ PERGUNTAS_ROTULO = {
 }
 
 
+_RESUMOS_FIXOS = {
+    "pdf_nao_processavel": "PDF não processável (modelo não reconhecido)",
+    "sem_assinatura": "Sem assinatura digital",
+    "polo_vazio": "Campo Polo não preenchido",
+    "mes_divergente": "Mês/ano divergente do lote",
+    "mes_nao_identificado": "Mês/ano não identificado",
+    "risco_evasao_nao_comunicado": "Risco de evasão não comunicado à coordenação",
+}
+
+
+def _rotulo_pendencia(codigo: str) -> str:
+    if codigo in _RESUMOS_FIXOS:
+        return _RESUMOS_FIXOS[codigo]
+    for chave, rotulo in PERGUNTAS_ROTULO.items():
+        if codigo == f"{chave}_nao_identificada":
+            return f"{rotulo} — resposta não identificada"
+        if codigo == f"{chave}_sem_justificativa":
+            return f"{rotulo} — sem justificativa"
+    return codigo.replace("_", " ").capitalize()
+
+
 def montar_relatorio(campos: dict, arquivo_origem: str, pasta_origem: str,
                       validacao, assinado: bool, mes_referencia: int, ano_referencia: int) -> RelatorioTutor:
     r = RelatorioTutor(
@@ -111,6 +132,25 @@ def agregar_lote(relatorios: list) -> dict:
         por_pasta[r.pasta_origem]["total"] += 1
         if r.tem_pendencia_critica:
             por_pasta[r.pasta_origem]["pendencias_criticas"] += 1
+    for dados in por_pasta.values():
+        dados["percentual_critica"] = round(100 * dados["pendencias_criticas"] / dados["total"]) if dados["total"] else 0
+    por_pasta_ordenado = dict(
+        sorted(por_pasta.items(), key=lambda item: item[1]["pendencias_criticas"], reverse=True)
+    )
+
+    pendencias_por_tipo = {}
+    for r in relatorios:
+        for p in r.pendencias:
+            pendencias_por_tipo.setdefault(p.codigo, {
+                "rotulo": _rotulo_pendencia(p.codigo),
+                "severidade": p.severidade,
+                "quantidade": 0,
+            })
+            pendencias_por_tipo[p.codigo]["quantidade"] += 1
+    pendencias_por_tipo_ordenado = dict(
+        sorted(pendencias_por_tipo.items(), key=lambda item: item[1]["quantidade"], reverse=True)
+    )
+    max_pendencia_tipo = max((d["quantidade"] for d in pendencias_por_tipo.values()), default=0)
 
     cpfs = {}
     duplicados = []
@@ -127,6 +167,8 @@ def agregar_lote(relatorios: list) -> dict:
         "com_pendencia_critica": com_pendencia_critica,
         "sem_assinatura": sem_assinatura,
         "nao_processados": nao_processados,
-        "por_pasta": por_pasta,
+        "por_pasta": por_pasta_ordenado,
+        "pendencias_por_tipo": pendencias_por_tipo_ordenado,
+        "max_pendencia_tipo": max_pendencia_tipo,
         "duplicados": duplicados,
     }

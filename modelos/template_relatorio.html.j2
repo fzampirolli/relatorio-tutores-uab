@@ -5,9 +5,12 @@
 <title>Auditoria de Relatórios de Tutores UAB — {{ nome_lote }}</title>
 <style>
   :root {
-    --bg: #f5f6f8; --panel: #ffffff; --text: #1c2331; --muted: #5b6472;
-    --border: #e1e4e9; --critica: #b3261e; --critica-bg: #fdecea;
-    --aviso: #8a5a00; --aviso-bg: #fff6e0; --ok: #1e7d32; --ok-bg: #e8f5e9;
+    --bg: #f5f6f8; --panel: #fcfcfb; --text: #0b0b0b; --muted: #52514e; --muted-2: #898781;
+    --border: #e1e0d9;
+    --critica: #d03b3b; --critica-bg: #fdecea;
+    --aviso: #8a5a00; --aviso-bg: #fff6e0;
+    --ok: #0ca30c; --ok-bg: #e8f5e9;
+    --bar-critica: #d03b3b; --bar-aviso: #fab219; --bar-track: #eceae2;
     --accent: #1d4ed8;
   }
   * { box-sizing: border-box; }
@@ -25,18 +28,55 @@
   main { max-width: 1100px; margin: 24px auto; padding: 0 16px 64px; }
 
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 28px; }
-  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
-  .card .num { font-size: 1.8rem; font-weight: 700; }
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 16px; text-align: center; cursor: pointer; transition: box-shadow .15s, transform .15s;
+  }
+  .card:hover { box-shadow: 0 2px 10px rgba(11,11,11,0.08); transform: translateY(-1px); }
+  .card.card-ativo { outline: 2px solid var(--accent); outline-offset: -1px; }
+  .card .num { font-size: 1.8rem; font-weight: 600; font-variant-numeric: proportional-nums; }
   .card .label { font-size: 0.8rem; color: var(--muted); }
   .card.critica .num { color: var(--critica); }
   .card.aviso .num { color: var(--aviso); }
   .card.ok .num { color: var(--ok); }
 
-  .tabela-polos { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; }
-  .tabela-polos table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
-  .tabela-polos th, .tabela-polos td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
-
   h2 { font-size: 1.1rem; margin: 32px 0 12px; }
+  .secao { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 20px; margin-bottom: 28px; }
+  .secao h3 { margin: 0 0 16px; font-size: 0.95rem; color: var(--muted); font-weight: 600; }
+
+  /* --- gráficos de barra horizontal (meter / magnitude) --- */
+  .grafico-linha { display: grid; grid-template-columns: 180px 1fr 48px; align-items: center; gap: 12px; margin-bottom: 10px; }
+  .grafico-linha .rotulo { font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .grafico-linha .trilha {
+    position: relative; height: 20px; background: var(--bar-track); border-radius: 4px; overflow: hidden;
+  }
+  .grafico-linha .preenchimento {
+    position: absolute; top: 0; left: 0; height: 100%; border-radius: 4px;
+    min-width: 4px;
+  }
+  .grafico-linha .preenchimento.critica { background: var(--bar-critica); }
+  .grafico-linha .preenchimento.aviso { background: var(--bar-aviso); }
+  .grafico-linha .valor { font-size: 0.85rem; font-variant-numeric: tabular-nums; text-align: right; }
+
+  .legenda-severidade { display: flex; gap: 20px; margin-bottom: 16px; font-size: 0.82rem; color: var(--muted); }
+  .legenda-severidade span { display: inline-flex; align-items: center; gap: 6px; }
+  .legenda-severidade i { width: 10px; height: 10px; border-radius: 2px; display: inline-block; }
+  .legenda-severidade i.critica { background: var(--bar-critica); }
+  .legenda-severidade i.aviso { background: var(--bar-aviso); }
+
+  table.dados { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  table.dados th, table.dados td { text-align: left; padding: 8px; border-bottom: 1px solid var(--border); }
+  table.dados th { color: var(--muted); font-weight: 600; cursor: pointer; user-select: none; white-space: nowrap; }
+  table.dados th:hover { color: var(--text); }
+  table.dados th .seta { color: var(--muted-2); font-size: 0.75rem; }
+  table.dados td.num, table.dados th.num { text-align: right; font-variant-numeric: tabular-nums; }
+
+  .busca { margin-bottom: 16px; }
+  .busca input {
+    width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+    font-size: 0.95rem; background: var(--panel); color: var(--text);
+  }
+  .contagem-visivel { color: var(--muted); font-size: 0.82rem; margin-bottom: 12px; }
 
   .tutor { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
   .tutor summary {
@@ -67,8 +107,12 @@
 
   @media (prefers-color-scheme: dark) {
     :root {
-      --bg: #14161a; --panel: #1d2027; --text: #e7e9ee; --muted: #9aa2b1;
-      --border: #2b2f38; --critica-bg: #3a1c1c; --aviso-bg: #3a2f0f; --ok-bg: #12301a;
+      --bg: #0d0d0d; --panel: #1a1a19; --text: #ffffff; --muted: #c3c2b7; --muted-2: #898781;
+      --border: #2c2c2a;
+      --critica: #e66767; --critica-bg: #3a1c1c;
+      --aviso: #fab219; --aviso-bg: #3a2f0f;
+      --ok: #0ca30c; --ok-bg: #12301a;
+      --bar-track: #2c2c2a;
     }
   }
 </style>
@@ -81,11 +125,21 @@
 <main>
 
   <div class="cards">
-    <div class="card"><div class="num">{{ resumo.total }}</div><div class="label">Relatórios recebidos</div></div>
-    <div class="card critica"><div class="num">{{ resumo.com_pendencia_critica }}</div><div class="label">Com pendência crítica</div></div>
-    <div class="card aviso"><div class="num">{{ resumo.sem_assinatura }}</div><div class="label">Sem assinatura digital</div></div>
-    <div class="card critica"><div class="num">{{ resumo.nao_processados }}</div><div class="label">Não processados</div></div>
-    <div class="card ok"><div class="num">{{ resumo.total - resumo.com_pendencia_critica }}</div><div class="label">Sem pendência crítica</div></div>
+    <div class="card" data-filtro="">
+      <div class="num">{{ resumo.total }}</div><div class="label">Relatórios recebidos</div>
+    </div>
+    <div class="card critica" data-filtro="critica">
+      <div class="num">{{ resumo.com_pendencia_critica }}</div><div class="label">Com pendência crítica</div>
+    </div>
+    <div class="card aviso" data-filtro="sem_assinatura">
+      <div class="num">{{ resumo.sem_assinatura }}</div><div class="label">Sem assinatura digital</div>
+    </div>
+    <div class="card critica" data-filtro="nao_processado">
+      <div class="num">{{ resumo.nao_processados }}</div><div class="label">Não processados</div>
+    </div>
+    <div class="card ok" data-filtro="ok">
+      <div class="num">{{ resumo.total - resumo.com_pendencia_critica }}</div><div class="label">Sem pendência crítica</div>
+    </div>
   </div>
 
   {% if resumo.duplicados %}
@@ -99,62 +153,174 @@
   </div>
   {% endif %}
 
-  <div class="tabela-polos">
-    <table>
-      <thead><tr><th>Curso / Polo (pasta)</th><th>Relatórios</th><th>Com pendência crítica</th></tr></thead>
+  <div class="secao">
+    <h3>Pendências críticas por curso/polo</h3>
+    {% for pasta, dados in resumo.por_pasta.items() %}
+    <div class="grafico-linha">
+      <span class="rotulo" title="{{ pasta }}">{{ pasta }}</span>
+      <span class="trilha" title="{{ dados.pendencias_criticas }} de {{ dados.total }} relatórios com pendência crítica ({{ dados.percentual_critica }}%)">
+        <span class="preenchimento critica" style="width: {{ dados.percentual_critica }}%;"></span>
+      </span>
+      <span class="valor">{{ dados.pendencias_criticas }}/{{ dados.total }}</span>
+    </div>
+    {% endfor %}
+  </div>
+
+  {% if resumo.pendencias_por_tipo %}
+  <div class="secao">
+    <h3>Distribuição de pendências por tipo</h3>
+    <div class="legenda-severidade">
+      <span><i class="critica"></i> Crítica</span>
+      <span><i class="aviso"></i> Aviso</span>
+    </div>
+    {% for codigo, dados in resumo.pendencias_por_tipo.items() %}
+    <div class="grafico-linha">
+      <span class="rotulo" title="{{ dados.rotulo }}">{{ dados.rotulo }}</span>
+      <span class="trilha" title="{{ dados.rotulo }}: {{ dados.quantidade }} ocorrência(s)">
+        <span class="preenchimento {{ dados.severidade }}"
+              style="width: {{ (dados.quantidade / resumo.max_pendencia_tipo * 100)|round(1) }}%;"></span>
+      </span>
+      <span class="valor">{{ dados.quantidade }}</span>
+    </div>
+    {% endfor %}
+
+    <table class="dados" id="tabela-pendencias" style="margin-top: 20px;">
+      <thead>
+        <tr>
+          <th onclick="ordenarTabela('tabela-pendencias', 0, 'texto')">Tipo de pendência <span class="seta">⇅</span></th>
+          <th onclick="ordenarTabela('tabela-pendencias', 1, 'texto')">Severidade <span class="seta">⇅</span></th>
+          <th class="num" onclick="ordenarTabela('tabela-pendencias', 2, 'numero')">Ocorrências <span class="seta">⇅</span></th>
+        </tr>
+      </thead>
       <tbody>
-        {% for pasta, dados in resumo.por_pasta.items() %}
-        <tr><td>{{ pasta }}</td><td>{{ dados.total }}</td><td>{{ dados.pendencias_criticas }}</td></tr>
+        {% for codigo, dados in resumo.pendencias_por_tipo.items() %}
+        <tr>
+          <td>{{ dados.rotulo }}</td>
+          <td><span class="badge {{ dados.severidade }}">{{ dados.severidade }}</span></td>
+          <td class="num">{{ dados.quantidade }}</td>
+        </tr>
         {% endfor %}
       </tbody>
     </table>
   </div>
+  {% endif %}
 
   <h2>Relatórios por tutor</h2>
 
-  {% for r in relatorios %}
-  <details class="tutor" {% if r.tem_pendencia_critica %}open{% endif %}>
-    <summary>
-      <span class="nome">{{ r.nome or "(nome não identificado)" }} <span class="meta">— {{ r.pasta_origem }}</span></span>
-      <span>
-        {% if r.tem_pendencia_critica %}<span class="badge critica">{{ r.pendencias|length }} pendência(s)</span>
-        {% elif r.pendencias %}<span class="badge aviso">{{ r.pendencias|length }} aviso(s)</span>
-        {% else %}<span class="badge ok">OK</span>{% endif %}
-      </span>
-    </summary>
-    <div class="corpo">
-      <dl class="grid-info">
-        <div><dt>CPF</dt><dd>{{ r.cpf or "—" }}</dd></div>
-        <div><dt>Curso</dt><dd>{{ r.curso or "—" }}</dd></div>
-        <div><dt>Polo</dt><dd>{{ r.polo or "—" }}</dd></div>
-        <div><dt>Mês/Ano no PDF</dt><dd>{{ r.mes or "—" }}/{{ r.ano or "—" }}</dd></div>
-        <div><dt>Assinatura digital</dt><dd>{{ "Sim" if r.assinado else "Não" }}</dd></div>
-        <div><dt>Score de confiança da extração</dt><dd>{{ "%.0f"|format(r.validacao.score * 100) }}%</dd></div>
-        <div><dt>Arquivo original</dt><dd>{{ r.arquivo_origem }}</dd></div>
-      </dl>
+  <div class="busca">
+    <input type="text" id="busca-tutor" placeholder="Buscar por nome, curso, polo ou pasta…" onkeyup="filtrarTutores()">
+  </div>
+  <div class="contagem-visivel" id="contagem-visivel"></div>
 
-      {% if r.pendencias %}
-      <ul class="pendencias">
-        {% for p in r.pendencias %}
-        <li class="{{ p.severidade }}">{{ p.descricao }}</li>
-        {% endfor %}
-      </ul>
-      {% endif %}
+  <div id="lista-tutores">
+    {% for r in relatorios %}
+    <details class="tutor"
+      data-busca="{{ (r.nome ~ ' ' ~ r.curso ~ ' ' ~ r.polo ~ ' ' ~ r.pasta_origem)|lower }}"
+      data-status="{% if not r.validacao.valido %}nao_processado{% elif not r.assinado %}sem_assinatura{% elif r.tem_pendencia_critica %}critica{% else %}ok{% endif %}"
+      {% if r.tem_pendencia_critica %}open{% endif %}>
+      <summary>
+        <span class="nome">{{ r.nome or "(nome não identificado)" }} <span class="meta">— {{ r.pasta_origem }}</span></span>
+        <span>
+          {% if r.tem_pendencia_critica %}<span class="badge critica">{{ r.pendencias|length }} pendência(s)</span>
+          {% elif r.pendencias %}<span class="badge aviso">{{ r.pendencias|length }} aviso(s)</span>
+          {% else %}<span class="badge ok">OK</span>{% endif %}
+        </span>
+      </summary>
+      <div class="corpo">
+        <dl class="grid-info">
+          <div><dt>CPF</dt><dd>{{ r.cpf or "—" }}</dd></div>
+          <div><dt>Curso</dt><dd>{{ r.curso or "—" }}</dd></div>
+          <div><dt>Polo</dt><dd>{{ r.polo or "—" }}</dd></div>
+          <div><dt>Mês/Ano no PDF</dt><dd>{{ r.mes or "—" }}/{{ r.ano or "—" }}</dd></div>
+          <div><dt>Assinatura digital</dt><dd>{{ "Sim" if r.assinado else "Não" }}</dd></div>
+          <div><dt>Score de confiança da extração</dt><dd>{{ "%.0f"|format(r.validacao.score * 100) }}%</dd></div>
+          <div><dt>Arquivo original</dt><dd>{{ r.arquivo_origem }}</dd></div>
+        </dl>
 
-      {% if r.validacao.motivos %}
-      <ul class="pendencias">
-        {% for m in r.validacao.motivos %}
-        <li class="aviso">{{ m }}</li>
-        {% endfor %}
-      </ul>
-      {% endif %}
-    </div>
-  </details>
-  {% endfor %}
+        {% if r.pendencias %}
+        <ul class="pendencias">
+          {% for p in r.pendencias %}
+          <li class="{{ p.severidade }}">{{ p.descricao }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+
+        {% if r.validacao.motivos %}
+        <ul class="pendencias">
+          {% for m in r.validacao.motivos %}
+          <li class="aviso">{{ m }}</li>
+          {% endfor %}
+        </ul>
+        {% endif %}
+      </div>
+    </details>
+    {% endfor %}
+  </div>
 
 </main>
 <footer>
   Gerado automaticamente por relatorio-tutores-uab. Nenhum arquivo enviado permanece no servidor após esta geração.
 </footer>
+
+<script>
+(function () {
+  var filtroAtivo = "";
+
+  function textoBusca() {
+    return document.getElementById("busca-tutor").value.trim().toLowerCase();
+  }
+
+  function atualizarLista() {
+    var busca = textoBusca();
+    var itens = document.querySelectorAll("#lista-tutores > .tutor");
+    var visiveis = 0;
+    itens.forEach(function (item) {
+      var bateStatus = !filtroAtivo || item.getAttribute("data-status") === filtroAtivo;
+      var bateBusca = !busca || item.getAttribute("data-busca").indexOf(busca) !== -1;
+      var mostra = bateStatus && bateBusca;
+      item.style.display = mostra ? "" : "none";
+      if (mostra) visiveis++;
+    });
+    document.getElementById("contagem-visivel").textContent =
+      visiveis + " de " + itens.length + " relatórios exibidos";
+  }
+
+  window.filtrarTutores = atualizarLista;
+
+  document.querySelectorAll(".card[data-filtro]").forEach(function (card) {
+    card.addEventListener("click", function () {
+      var alvo = card.getAttribute("data-filtro");
+      filtroAtivo = (filtroAtivo === alvo) ? "" : alvo;
+      document.querySelectorAll(".card[data-filtro]").forEach(function (c) {
+        c.classList.toggle("card-ativo", c === card && filtroAtivo !== "");
+      });
+      atualizarLista();
+    });
+  });
+
+  atualizarLista();
+})();
+
+function ordenarTabela(idTabela, indiceColuna, tipo) {
+  var tabela = document.getElementById(idTabela);
+  var corpo = tabela.tBodies[0];
+  var linhas = Array.prototype.slice.call(corpo.rows);
+  var asc = tabela.getAttribute("data-ordenado-por") !== String(indiceColuna) ||
+            tabela.getAttribute("data-ordem") === "desc";
+
+  linhas.sort(function (a, b) {
+    var va = a.cells[indiceColuna].textContent.trim();
+    var vb = b.cells[indiceColuna].textContent.trim();
+    if (tipo === "numero") { va = parseFloat(va) || 0; vb = parseFloat(vb) || 0; }
+    if (va < vb) return asc ? -1 : 1;
+    if (va > vb) return asc ? 1 : -1;
+    return 0;
+  });
+
+  linhas.forEach(function (linha) { corpo.appendChild(linha); });
+  tabela.setAttribute("data-ordenado-por", String(indiceColuna));
+  tabela.setAttribute("data-ordem", asc ? "asc" : "desc");
+}
+</script>
 </body>
 </html>
