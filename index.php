@@ -166,6 +166,10 @@ $ano_atual = date("Y");
     background: transparent; border: 1px solid var(--border); color: var(--muted);
   }
   .cartao-progresso button.cancelar:hover, .cartao-progresso button.fechar:hover { background: var(--bg); }
+  .cartao-progresso button.abrir {
+    margin-top: 20px; margin-right: 10px; width: auto; padding: 8px 18px; font-size: 0.85rem;
+  }
+  .cartao-progresso button.fechar { margin-top: 20px; }
 </style>
 </head>
 <body>
@@ -304,6 +308,7 @@ $ano_atual = date("Y");
     <p class="status-etapa" id="status-etapa">Preparando envio…</p>
     <p class="erro-detalhe" id="erro-detalhe"></p>
     <button type="button" class="cancelar" id="botao-cancelar">Cancelar</button>
+    <button type="button" class="abrir" id="botao-abrir" style="display:none;">Abrir relatório</button>
     <button type="button" class="fechar" id="botao-fechar" style="display:none;">Fechar</button>
   </div>
 </div>
@@ -376,6 +381,7 @@ $ano_atual = date("Y");
   const statusEtapa = document.getElementById("status-etapa");
   const erroDetalhe = document.getElementById("erro-detalhe");
   const botaoCancelar = document.getElementById("botao-cancelar");
+  const botaoAbrir = document.getElementById("botao-abrir");
   const botaoFechar = document.getElementById("botao-fechar");
   const botaoEnviar = document.getElementById("botao-enviar");
 
@@ -383,6 +389,14 @@ $ano_atual = date("Y");
   let xhrAtual = null;
   let cicloEtapas = null;
   let fase = "enviando"; // "enviando" | "processando"
+  let urlRelatorioAtual = null;
+
+  function revogarUrlAtual() {
+    if (urlRelatorioAtual) {
+      URL.revokeObjectURL(urlRelatorioAtual);
+      urlRelatorioAtual = null;
+    }
+  }
 
   function circunferenciaPara(percentual) {
     return CIRCUNFERENCIA - (CIRCUNFERENCIA * percentual / 100);
@@ -395,8 +409,10 @@ $ano_atual = date("Y");
     erroDetalhe.style.display = "none";
     erroDetalhe.textContent = "";
     botaoCancelar.style.display = "";
+    botaoAbrir.style.display = "none";
     botaoFechar.style.display = "none";
     if (cicloEtapas) { clearInterval(cicloEtapas); cicloEtapas = null; }
+    revogarUrlAtual();
   }
 
   function mostrarOverlay() {
@@ -409,6 +425,7 @@ $ano_atual = date("Y");
 
   function esconderOverlay() {
     overlay.classList.remove("visivel");
+    revogarUrlAtual();
   }
 
   function iniciarEtapaProcessamento() {
@@ -437,12 +454,14 @@ $ano_atual = date("Y");
     return "auditoria-tutores-" + mesStr + "-" + ano + ".html";
   }
 
-  function mostrarSucesso() {
+  function mostrarSucesso(url) {
     if (cicloEtapas) { clearInterval(cicloEtapas); cicloEtapas = null; }
+    urlRelatorioAtual = url;
     anel.classList.remove("indeterminado");
     anel.classList.add("sucesso");
     titulo.textContent = "Relatório gerado!";
-    statusEtapa.textContent = "O download deve começar automaticamente.";
+    statusEtapa.textContent = "O download já começou — ou abra direto abaixo.";
+    botaoAbrir.style.display = "";
     botaoFechar.style.display = "";
   }
 
@@ -493,16 +512,16 @@ $ano_atual = date("Y");
     xhr.addEventListener("load", function () {
       botaoEnviar.disabled = false;
       if (xhr.status === 200) {
-        mostrarSucesso();
         const url = URL.createObjectURL(xhr.response);
+        mostrarSucesso(url);
         const a = document.createElement("a");
         a.href = url;
         a.download = nomeArquivoSaida();
         document.body.appendChild(a);
         a.click();
         a.remove();
-        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
-        setTimeout(esconderOverlay, 2200);
+        // a URL fica viva até o usuário clicar "Abrir relatório" ou "Fechar"
+        // (revogada em revogarUrlAtual) — não some sozinha.
       } else {
         // resposta de erro vem como HTML; precisa ler o blob como texto.
         const leitor = new FileReader();
@@ -528,6 +547,10 @@ $ano_atual = date("Y");
 
   botaoCancelar.addEventListener("click", function () {
     if (xhrAtual) xhrAtual.abort();
+  });
+
+  botaoAbrir.addEventListener("click", function () {
+    if (urlRelatorioAtual) window.open(urlRelatorioAtual, "_blank");
   });
 
   botaoFechar.addEventListener("click", esconderOverlay);
