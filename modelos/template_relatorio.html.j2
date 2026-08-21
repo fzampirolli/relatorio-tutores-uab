@@ -49,7 +49,10 @@
   .grafico-linha .rotulo { font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .grafico-linha .trilha {
     position: relative; height: 20px; background: var(--bar-track); border-radius: 4px; overflow: hidden;
+    cursor: pointer;
   }
+  .grafico-linha .trilha:hover { filter: brightness(0.94); }
+  .grafico-linha .trilha.trilha-ativa { outline: 2px solid var(--accent); outline-offset: 1px; }
   .grafico-linha .preenchimento {
     position: absolute; top: 0; left: 0; height: 100%; border-radius: 4px;
     min-width: 4px;
@@ -57,6 +60,31 @@
   .grafico-linha .preenchimento.critica { background: var(--bar-critica); }
   .grafico-linha .preenchimento.aviso { background: var(--bar-aviso); }
   .grafico-linha .valor { font-size: 0.85rem; font-variant-numeric: tabular-nums; text-align: right; }
+
+  .tooltip-grafico {
+    position: fixed; z-index: 50; pointer-events: none;
+    background: var(--text); color: var(--panel);
+    padding: 9px 12px; border-radius: 8px; font-size: 0.8rem; line-height: 1.4;
+    max-width: 280px; box-shadow: 0 4px 16px rgba(0,0,0,.2);
+    opacity: 0; transition: opacity .1s; transform: translate(-50%, calc(-100% - 10px));
+  }
+  .tooltip-grafico.visivel { opacity: 1; }
+  .tooltip-grafico .titulo { font-weight: 600; margin-bottom: 4px; }
+  .tooltip-grafico ul { margin: 0; padding-left: 16px; }
+  .tooltip-grafico .dica { margin-top: 6px; opacity: .75; font-size: 0.75rem; }
+
+  .filtro-ativo-chip {
+    display: none; align-items: center; gap: 10px; background: var(--critica-bg); color: var(--critica);
+    border-radius: 8px; padding: 10px 14px; font-size: 0.88rem; margin-bottom: 14px;
+  }
+  .filtro-ativo-chip.visivel { display: inline-flex; }
+  .filtro-ativo-chip button {
+    border: none; background: none; color: inherit; cursor: pointer; font-weight: 700;
+    font-size: 1rem; line-height: 1; padding: 0 2px;
+  }
+
+  .tutor li.pendencia-destacada { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tutor.tutor-destacado { outline: 2px solid var(--accent); outline-offset: 2px; }
 
   .legenda-severidade { display: flex; gap: 20px; margin-bottom: 16px; font-size: 0.82rem; color: var(--muted); }
   .legenda-severidade span { display: inline-flex; align-items: center; gap: 6px; }
@@ -158,7 +186,8 @@
     {% for pasta, dados in resumo.por_pasta.items() %}
     <div class="grafico-linha">
       <span class="rotulo" title="{{ pasta }}">{{ pasta }}</span>
-      <span class="trilha" title="{{ dados.pendencias_criticas }} de {{ dados.total }} relatórios com pendência crítica ({{ dados.percentual_critica }}%)">
+      <span class="trilha" data-tipo="polo" data-chave="{{ pasta }}"
+            data-rotulo="{{ pasta }}: {{ dados.pendencias_criticas }} de {{ dados.total }} com pendência crítica">
         <span class="preenchimento critica" style="width: {{ dados.percentual_critica }}%;"></span>
       </span>
       <span class="valor">{{ dados.pendencias_criticas }}/{{ dados.total }}</span>
@@ -176,7 +205,8 @@
     {% for codigo, dados in resumo.pendencias_por_tipo.items() %}
     <div class="grafico-linha">
       <span class="rotulo" title="{{ dados.rotulo }}">{{ dados.rotulo }}</span>
-      <span class="trilha" title="{{ dados.rotulo }}: {{ dados.quantidade }} ocorrência(s)">
+      <span class="trilha" data-tipo="codigo" data-chave="{{ codigo }}"
+            data-rotulo="{{ dados.rotulo }}: {{ dados.quantidade }} ocorrência(s)">
         <span class="preenchimento {{ dados.severidade }}"
               style="width: {{ (dados.quantidade / resumo.max_pendencia_tipo * 100)|round(1) }}%;"></span>
       </span>
@@ -210,12 +240,19 @@
   <div class="busca">
     <input type="text" id="busca-tutor" placeholder="Buscar por nome, curso, polo ou pasta…" onkeyup="filtrarTutores()">
   </div>
+  <div class="filtro-ativo-chip" id="filtro-ativo-chip">
+    <span id="filtro-ativo-texto"></span>
+    <button type="button" onclick="limparFiltroGrafico()" aria-label="Limpar filtro">✕</button>
+  </div>
   <div class="contagem-visivel" id="contagem-visivel"></div>
 
   <div id="lista-tutores">
     {% for r in relatorios %}
     <details class="tutor"
       data-busca="{{ (r.nome ~ ' ' ~ r.curso ~ ' ' ~ r.polo ~ ' ' ~ r.pasta_origem)|lower }}"
+      data-polo="{{ r.pasta_origem }}"
+      data-nome="{{ r.nome or r.arquivo_origem }}"
+      data-tem-critica="{{ '1' if r.tem_pendencia_critica else '0' }}"
       data-status="{% if not r.validacao.valido %}nao_processado{% elif not r.assinado %}sem_assinatura{% elif r.tem_pendencia_critica %}critica{% else %}ok{% endif %}"
       {% if r.tem_pendencia_critica %}open{% endif %}>
       <summary>
@@ -240,7 +277,7 @@
         {% if r.pendencias %}
         <ul class="pendencias">
           {% for p in r.pendencias %}
-          <li class="{{ p.severidade }}">{{ p.descricao }}</li>
+          <li class="{{ p.severidade }}" data-codigo="{{ p.codigo }}">{{ p.descricao }}</li>
           {% endfor %}
         </ul>
         {% endif %}
@@ -258,43 +295,189 @@
   </div>
 
 </main>
+<div class="tooltip-grafico" id="tooltip-grafico"></div>
 <footer>
   Gerado automaticamente por relatorio-tutores-uab. Nenhum arquivo enviado permanece no servidor após esta geração.
 </footer>
 
 <script>
 (function () {
-  var filtroAtivo = "";
+  var filtroStatus = "";
+  var filtroGrafico = null; // { tipo: "polo"|"codigo", chave: "...", rotulo: "..." }
 
   function textoBusca() {
     return document.getElementById("busca-tutor").value.trim().toLowerCase();
   }
 
+  function tutorBateGrafico(item) {
+    if (!filtroGrafico) return true;
+    if (filtroGrafico.tipo === "polo") {
+      return item.getAttribute("data-polo") === filtroGrafico.chave &&
+             item.getAttribute("data-tem-critica") === "1";
+    }
+    if (filtroGrafico.tipo === "codigo") {
+      return !!item.querySelector('li[data-codigo="' + cssEscape(filtroGrafico.chave) + '"]');
+    }
+    return true;
+  }
+
+  function cssEscape(valor) {
+    return window.CSS && CSS.escape ? CSS.escape(valor) : valor.replace(/["\\]/g, "\\$&");
+  }
+
+  function limparDestaques() {
+    document.querySelectorAll(".pendencia-destacada").forEach(function (li) {
+      li.classList.remove("pendencia-destacada");
+    });
+  }
+
+  function aplicarDestaques(item) {
+    if (!filtroGrafico) return;
+    if (filtroGrafico.tipo === "codigo") {
+      var li = item.querySelector('li[data-codigo="' + cssEscape(filtroGrafico.chave) + '"]');
+      if (li) li.classList.add("pendencia-destacada");
+    } else if (filtroGrafico.tipo === "polo") {
+      item.querySelectorAll("li.critica").forEach(function (li) {
+        li.classList.add("pendencia-destacada");
+      });
+    }
+  }
+
+  function atualizarChip() {
+    var chip = document.getElementById("filtro-ativo-chip");
+    var texto = document.getElementById("filtro-ativo-texto");
+    if (filtroGrafico) {
+      texto.textContent = "Filtrando por gráfico: " + filtroGrafico.rotulo;
+      chip.classList.add("visivel");
+    } else {
+      chip.classList.remove("visivel");
+    }
+  }
+
   function atualizarLista() {
     var busca = textoBusca();
+    limparDestaques();
     var itens = document.querySelectorAll("#lista-tutores > .tutor");
     var visiveis = 0;
     itens.forEach(function (item) {
-      var bateStatus = !filtroAtivo || item.getAttribute("data-status") === filtroAtivo;
+      var bateStatus = !filtroStatus || item.getAttribute("data-status") === filtroStatus;
       var bateBusca = !busca || item.getAttribute("data-busca").indexOf(busca) !== -1;
-      var mostra = bateStatus && bateBusca;
+      var bateGrafico = tutorBateGrafico(item);
+      var mostra = bateStatus && bateBusca && bateGrafico;
       item.style.display = mostra ? "" : "none";
-      if (mostra) visiveis++;
+      if (mostra) {
+        visiveis++;
+        if (filtroGrafico) {
+          item.setAttribute("open", "");
+          aplicarDestaques(item);
+        }
+      }
     });
     document.getElementById("contagem-visivel").textContent =
       visiveis + " de " + itens.length + " relatórios exibidos";
+    atualizarChip();
   }
 
   window.filtrarTutores = atualizarLista;
 
+  window.limparFiltroGrafico = function () {
+    filtroGrafico = null;
+    document.querySelectorAll(".trilha.trilha-ativa").forEach(function (t) {
+      t.classList.remove("trilha-ativa");
+    });
+    atualizarLista();
+  };
+
   document.querySelectorAll(".card[data-filtro]").forEach(function (card) {
     card.addEventListener("click", function () {
       var alvo = card.getAttribute("data-filtro");
-      filtroAtivo = (filtroAtivo === alvo) ? "" : alvo;
+      filtroStatus = (filtroStatus === alvo) ? "" : alvo;
       document.querySelectorAll(".card[data-filtro]").forEach(function (c) {
-        c.classList.toggle("card-ativo", c === card && filtroAtivo !== "");
+        c.classList.toggle("card-ativo", c === card && filtroStatus !== "");
       });
       atualizarLista();
+    });
+  });
+
+  // --- gráficos: hover mostra os tutores afetados, clique filtra a lista ---
+  var tooltip = document.getElementById("tooltip-grafico");
+
+  function tutoresQueBatem(tipo, chave) {
+    var nomes = [];
+    document.querySelectorAll("#lista-tutores > .tutor").forEach(function (item) {
+      var bate = tipo === "polo"
+        ? (item.getAttribute("data-polo") === chave && item.getAttribute("data-tem-critica") === "1")
+        : !!item.querySelector('li[data-codigo="' + cssEscape(chave) + '"]');
+      if (bate) nomes.push(item.getAttribute("data-nome"));
+    });
+    return nomes;
+  }
+
+  function mostrarTooltip(trilha, evento) {
+    var tipo = trilha.getAttribute("data-tipo");
+    var chave = trilha.getAttribute("data-chave");
+    var rotulo = trilha.getAttribute("data-rotulo");
+    var nomes = tutoresQueBatem(tipo, chave);
+
+    tooltip.innerHTML = "";
+    var titulo = document.createElement("div");
+    titulo.className = "titulo";
+    titulo.textContent = rotulo;
+    tooltip.appendChild(titulo);
+
+    if (nomes.length) {
+      var ul = document.createElement("ul");
+      nomes.slice(0, 8).forEach(function (nome) {
+        var li = document.createElement("li");
+        li.textContent = nome;
+        ul.appendChild(li);
+      });
+      tooltip.appendChild(ul);
+      if (nomes.length > 8) {
+        var maisEl = document.createElement("div");
+        maisEl.className = "dica";
+        maisEl.textContent = "+ " + (nomes.length - 8) + " outro(s)";
+        tooltip.appendChild(maisEl);
+      }
+    }
+    var dica = document.createElement("div");
+    dica.className = "dica";
+    dica.textContent = "Clique para filtrar a lista abaixo";
+    tooltip.appendChild(dica);
+
+    tooltip.style.left = evento.clientX + "px";
+    tooltip.style.top = evento.clientY + "px";
+    tooltip.classList.add("visivel");
+  }
+
+  document.querySelectorAll(".trilha[data-tipo]").forEach(function (trilha) {
+    trilha.addEventListener("mouseenter", function (e) { mostrarTooltip(trilha, e); });
+    trilha.addEventListener("mousemove", function (e) {
+      tooltip.style.left = e.clientX + "px";
+      tooltip.style.top = e.clientY + "px";
+    });
+    trilha.addEventListener("mouseleave", function () {
+      tooltip.classList.remove("visivel");
+    });
+    trilha.addEventListener("click", function () {
+      var tipo = trilha.getAttribute("data-tipo");
+      var chave = trilha.getAttribute("data-chave");
+      var rotulo = trilha.getAttribute("data-rotulo");
+
+      var jaAtiva = filtroGrafico && filtroGrafico.tipo === tipo && filtroGrafico.chave === chave;
+      filtroGrafico = jaAtiva ? null : { tipo: tipo, chave: chave, rotulo: rotulo };
+
+      document.querySelectorAll(".trilha.trilha-ativa").forEach(function (t) {
+        t.classList.remove("trilha-ativa");
+      });
+      if (filtroGrafico) trilha.classList.add("trilha-ativa");
+
+      tooltip.classList.remove("visivel");
+      atualizarLista();
+
+      if (filtroGrafico) {
+        document.getElementById("lista-tutores").scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     });
   });
 
