@@ -1,0 +1,42 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:github.com)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "Bash(python3 -c \"import sys; print\\(sys.executable\\)\")",
+      "Bash(pip3 show *)",
+      "Bash(python3 -m venv .venv_test)",
+      "Bash(.venv_test/bin/pip install *)",
+      "Bash(.venv_test/bin/python3 -c ' *)",
+      "Bash(.venv_test/bin/python3 *)",
+      "Bash(> logs/execucoes.log)",
+      "Bash(php -l /home/fz/VSCode/relatorio-tutores-uab/index.php)",
+      "Bash(php -l /home/fz/VSCode/relatorio-tutores-uab/upload.php)",
+      "Bash(.venv_test/bin/pip show *)",
+      "WebFetch(domain:www.gnu.org)",
+      "Bash(curl -fsSL https://www.gnu.org/licenses/agpl-3.0.txt -o /home/fz/VSCode/relatorio-tutores-uab/LICENSE)",
+      "Bash(chmod +x run_script.sh delete_files_reports.sh)",
+      "Bash(python3 -m venv venv)",
+      "Bash(./venv/bin/pip install *)",
+      "Bash(./venv/bin/pytest tests/ -q)",
+      "Bash(git init *)",
+      "Bash(find / -maxdepth 4 -iname \"*AcompanhaTutor*\" -not -path \"*/node_modules/*\")",
+      "Read(//usr/lib/**)",
+      "Bash(apt list *)",
+      "Bash(sudo -n true)",
+      "Bash(curl -s -o /dev/null -w \"index.php -> HTTP %{http_code}\\\\n\" http://localhost:8000/index.php)",
+      "Bash(curl -s http://localhost:8000/index.php)",
+      "Bash(docker stop *)",
+      "Bash(docker exec *)",
+      "Bash(rm -f __TRACKED_VAR__/teste_upload.zip __TRACKED_VAR__/resposta.html)",
+      "Bash(git -C /home/fz/VSCode/relatorio-tutores-uab status --short)",
+      "Bash(docker run *)",
+      "Read(//home/fz/.ssh/**)",
+      "Bash(ssh -o BatchMode=yes -o ConnectTimeout=3 mctest22 echo \"conexão SSH ok\")",
+      "Bash(git config *)",
+      "Bash(curl *)",
+      "Bash(git add *)",
+      "Bash(git commit -q -m ' *)"
+    ]
+  }
+}

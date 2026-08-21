@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<title>Auditoria de Relatórios de Tutores UAB — {{ nome_lote }}</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --panel: #ffffff; --text: #1c2331; --muted: #5b6472;
+    --border: #e1e4e9; --critica: #b3261e; --critica-bg: #fdecea;
+    --aviso: #8a5a00; --aviso-bg: #fff6e0; --ok: #1e7d32; --ok-bg: #e8f5e9;
+    --accent: #1d4ed8;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
+    line-height: 1.45;
+  }
+  header {
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    padding: 24px 32px;
+  }
+  header h1 { margin: 0 0 4px; font-size: 1.4rem; }
+  header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+  main { max-width: 1100px; margin: 24px auto; padding: 0 16px 64px; }
+
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 28px; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; text-align: center; }
+  .card .num { font-size: 1.8rem; font-weight: 700; }
+  .card .label { font-size: 0.8rem; color: var(--muted); }
+  .card.critica .num { color: var(--critica); }
+  .card.aviso .num { color: var(--aviso); }
+  .card.ok .num { color: var(--ok); }
+
+  .tabela-polos { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; }
+  .tabela-polos table { width: 100%; border-collapse: collapse; font-size: 0.9rem; }
+  .tabela-polos th, .tabela-polos td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--border); }
+
+  h2 { font-size: 1.1rem; margin: 32px 0 12px; }
+
+  .tutor { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 14px; overflow: hidden; }
+  .tutor summary {
+    cursor: pointer; padding: 14px 18px; display: flex; align-items: center;
+    justify-content: space-between; gap: 12px; list-style: none;
+  }
+  .tutor summary::-webkit-details-marker { display: none; }
+  .tutor summary .nome { font-weight: 600; }
+  .tutor summary .meta { color: var(--muted); font-size: 0.85rem; font-weight: 400; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.75rem; font-weight: 600; }
+  .badge.critica { background: var(--critica-bg); color: var(--critica); }
+  .badge.aviso { background: var(--aviso-bg); color: var(--aviso); }
+  .badge.ok { background: var(--ok-bg); color: var(--ok); }
+
+  .tutor .corpo { padding: 0 18px 18px; border-top: 1px solid var(--border); }
+  .tutor .grid-info { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px 16px; margin: 14px 0; font-size: 0.9rem; }
+  .tutor .grid-info dt { color: var(--muted); font-size: 0.78rem; text-transform: uppercase; letter-spacing: .03em; }
+  .tutor .grid-info dd { margin: 0; }
+
+  ul.pendencias { list-style: none; margin: 8px 0 0; padding: 0; }
+  ul.pendencias li { padding: 8px 10px; border-radius: 6px; margin-bottom: 6px; font-size: 0.88rem; }
+  ul.pendencias li.critica { background: var(--critica-bg); color: var(--critica); }
+  ul.pendencias li.aviso { background: var(--aviso-bg); color: var(--aviso); }
+
+  .duplicados { background: var(--critica-bg); border: 1px solid var(--critica); border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; color: var(--critica); }
+
+  footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 24px; }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --panel: #1d2027; --text: #e7e9ee; --muted: #9aa2b1;
+      --border: #2b2f38; --critica-bg: #3a1c1c; --aviso-bg: #3a2f0f; --ok-bg: #12301a;
+    }
+  }
+</style>
+</head>
+<body>
+<header>
+  <h1>Auditoria de Relatórios de Tutores UAB</h1>
+  <p>Lote: {{ nome_lote }} · Referência: {{ "%02d"|format(mes_referencia) }}/{{ ano_referencia }} · Gerado em {{ gerado_em }}</p>
+</header>
+<main>
+
+  <div class="cards">
+    <div class="card"><div class="num">{{ resumo.total }}</div><div class="label">Relatórios recebidos</div></div>
+    <div class="card critica"><div class="num">{{ resumo.com_pendencia_critica }}</div><div class="label">Com pendência crítica</div></div>
+    <div class="card aviso"><div class="num">{{ resumo.sem_assinatura }}</div><div class="label">Sem assinatura digital</div></div>
+    <div class="card critica"><div class="num">{{ resumo.nao_processados }}</div><div class="label">Não processados</div></div>
+    <div class="card ok"><div class="num">{{ resumo.total - resumo.com_pendencia_critica }}</div><div class="label">Sem pendência crítica</div></div>
+  </div>
+
+  {% if resumo.duplicados %}
+  <div class="duplicados">
+    <strong>CPF com mais de um relatório enviado no lote:</strong>
+    <ul>
+      {% for d in resumo.duplicados %}
+      <li>{{ d.cpf }} — {{ d.arquivos|join(", ") }}</li>
+      {% endfor %}
+    </ul>
+  </div>
+  {% endif %}
+
+  <div class="tabela-polos">
+    <table>
+      <thead><tr><th>Curso / Polo (pasta)</th><th>Relatórios</th><th>Com pendência crítica</th></tr></thead>
+      <tbody>
+        {% for pasta, dados in resumo.por_pasta.items() %}
+        <tr><td>{{ pasta }}</td><td>{{ dados.total }}</td><td>{{ dados.pendencias_criticas }}</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <h2>Relatórios por tutor</h2>
+
+  {% for r in relatorios %}
+  <details class="tutor" {% if r.tem_pendencia_critica %}open{% endif %}>
+    <summary>
+      <span class="nome">{{ r.nome or "(nome não identificado)" }} <span class="meta">— {{ r.pasta_origem }}</span></span>
+      <span>
+        {% if r.tem_pendencia_critica %}<span class="badge critica">{{ r.pendencias|length }} pendência(s)</span>
+        {% elif r.pendencias %}<span class="badge aviso">{{ r.pendencias|length }} aviso(s)</span>
+        {% else %}<span class="badge ok">OK</span>{% endif %}
+      </span>
+    </summary>
+    <div class="corpo">
+      <dl class="grid-info">
+        <div><dt>CPF</dt><dd>{{ r.cpf or "—" }}</dd></div>
+        <div><dt>Curso</dt><dd>{{ r.curso or "—" }}</dd></div>
+        <div><dt>Polo</dt><dd>{{ r.polo or "—" }}</dd></div>
+        <div><dt>Mês/Ano no PDF</dt><dd>{{ r.mes or "—" }}/{{ r.ano or "—" }}</dd></div>
+        <div><dt>Assinatura digital</dt><dd>{{ "Sim" if r.assinado else "Não" }}</dd></div>
+        <div><dt>Score de confiança da extração</dt><dd>{{ "%.0f"|format(r.validacao.score * 100) }}%</dd></div>
+        <div><dt>Arquivo original</dt><dd>{{ r.arquivo_origem }}</dd></div>
+      </dl>
+
+      {% if r.pendencias %}
+      <ul class="pendencias">
+        {% for p in r.pendencias %}
+        <li class="{{ p.severidade }}">{{ p.descricao }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+
+      {% if r.validacao.motivos %}
+      <ul class="pendencias">
+        {% for m in r.validacao.motivos %}
+        <li class="aviso">{{ m }}</li>
+        {% endfor %}
+      </ul>
+      {% endif %}
+    </div>
+  </details>
+  {% endfor %}
+
+</main>
+<footer>
+  Gerado automaticamente por relatorio-tutores-uab. Nenhum arquivo enviado permanece no servidor após esta geração.
+</footer>
+</body>
+</html>
