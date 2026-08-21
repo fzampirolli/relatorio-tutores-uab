@@ -103,6 +103,69 @@ $ano_atual = date("Y");
     input[type=file], select, input[type=number] { background: #10131a; color: var(--text); border-color: #333a48; }
     code { background: #232833; }
   }
+
+  /* --- overlay de progresso (upload + processamento) --- */
+  .overlay-progresso {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(15,17,21,0.55); backdrop-filter: blur(3px);
+    display: none; align-items: center; justify-content: center; padding: 20px;
+  }
+  .overlay-progresso.visivel { display: flex; }
+  .cartao-progresso {
+    background: var(--panel); border-radius: 18px; padding: 36px 40px;
+    max-width: 380px; width: 100%; text-align: center;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+    animation: entrada-cartao .25s ease;
+  }
+  @keyframes entrada-cartao {
+    from { opacity: 0; transform: translateY(8px) scale(.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .anel-progresso { position: relative; width: 116px; height: 116px; margin: 0 auto 22px; }
+  .anel-progresso svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .anel-progresso .trilho { fill: none; stroke: var(--accent-bg); stroke-width: 8; }
+  .anel-progresso .traco {
+    fill: none; stroke: var(--accent); stroke-width: 8; stroke-linecap: round;
+    stroke-dasharray: 327; stroke-dashoffset: 327; transition: stroke-dashoffset .25s ease;
+  }
+  .anel-progresso.indeterminado .traco {
+    stroke-dashoffset: 245; animation: girar-anel 1.1s linear infinite;
+    transform-origin: 50% 50%;
+  }
+  .anel-progresso.sucesso .traco { stroke: var(--ok); stroke-dashoffset: 0; }
+  .anel-progresso.erro .traco { stroke: #d03b3b; stroke-dashoffset: 0; }
+  @keyframes girar-anel { to { transform: rotate(360deg); } }
+
+  .anel-progresso .conteudo {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 1.15rem; font-weight: 700; color: var(--text);
+  }
+  .anel-progresso .icone-check, .anel-progresso .icone-erro {
+    font-size: 2.1rem; display: none;
+  }
+  .anel-progresso.sucesso .conteudo .porcentagem { display: none; }
+  .anel-progresso.sucesso .conteudo .icone-check { display: block; animation: surgir-icone .3s ease; }
+  .anel-progresso.erro .conteudo .porcentagem { display: none; }
+  .anel-progresso.erro .conteudo .icone-erro { display: block; animation: surgir-icone .3s ease; }
+  @keyframes surgir-icone {
+    from { opacity: 0; transform: scale(.5); }
+    to { opacity: 1; transform: scale(1); }
+  }
+
+  .cartao-progresso h3 { margin: 0 0 6px; font-size: 1.05rem; }
+  .cartao-progresso .status-etapa {
+    color: var(--muted); font-size: 0.88rem; min-height: 20px;
+    transition: opacity .2s ease;
+  }
+  .cartao-progresso .erro-detalhe {
+    color: #d03b3b; font-size: 0.85rem; margin-top: 10px; display: none;
+  }
+  .cartao-progresso button.cancelar, .cartao-progresso button.fechar {
+    margin-top: 20px; width: auto; padding: 8px 18px; font-size: 0.85rem;
+    background: transparent; border: 1px solid var(--border); color: var(--muted);
+  }
+  .cartao-progresso button.cancelar:hover, .cartao-progresso button.fechar:hover { background: var(--bg); }
 </style>
 </head>
 <body>
@@ -160,7 +223,7 @@ $ano_atual = date("Y");
     <div class="painel">
       <h2>Gerar relatório de auditoria</h2>
 
-      <form action="upload.php" method="post" enctype="multipart/form-data">
+      <form id="form-upload" action="upload.php" method="post" enctype="multipart/form-data">
         <label for="zip_relatorios">Arquivo .zip com os relatórios</label>
         <input type="file" id="zip_relatorios" name="zip_relatorios" accept=".zip" required>
 
@@ -190,7 +253,7 @@ $ano_atual = date("Y");
 
         <p class="aviso" id="sugestao" hidden></p>
 
-        <button type="submit">Gerar relatório de auditoria</button>
+        <button type="submit" id="botao-enviar">Gerar relatório de auditoria</button>
       </form>
 
       <div class="info-caixa">
@@ -223,6 +286,27 @@ $ano_atual = date("Y");
   <p>© <?= htmlspecialchars($ano_atual) ?> Francisco de Assis Zampirolli — <a href="https://sites.google.com/site/fzampirolli/" target="_blank" rel="noopener">sites.google.com/site/fzampirolli</a></p>
   <p>NETEL/UAB — UFABC · Av. dos Estados, 5001, Bloco L, 3º andar · Santo André - SP</p>
 </footer>
+
+<div class="overlay-progresso" id="overlay-progresso">
+  <div class="cartao-progresso">
+    <div class="anel-progresso" id="anel-progresso">
+      <svg viewBox="0 0 120 120">
+        <circle class="trilho" cx="60" cy="60" r="52"></circle>
+        <circle class="traco" cx="60" cy="60" r="52"></circle>
+      </svg>
+      <div class="conteudo">
+        <span class="porcentagem" id="texto-porcentagem">0%</span>
+        <span class="icone-check">✓</span>
+        <span class="icone-erro">✕</span>
+      </div>
+    </div>
+    <h3 id="titulo-progresso">Enviando arquivo…</h3>
+    <p class="status-etapa" id="status-etapa">Preparando envio…</p>
+    <p class="erro-detalhe" id="erro-detalhe"></p>
+    <button type="button" class="cancelar" id="botao-cancelar">Cancelar</button>
+    <button type="button" class="fechar" id="botao-fechar" style="display:none;">Fechar</button>
+  </div>
+</div>
 
 <script>
 // Sugere mês/ano a partir do nome do arquivo (ex.: "julho-26", "Julho_2026",
@@ -269,6 +353,184 @@ $ano_atual = date("Y");
       aviso.textContent = "Não foi possível sugerir o mês/ano pelo nome do arquivo — preencha manualmente.";
     }
   });
+})();
+
+// Envio via XHR: mostra progresso real do upload, depois uma animação de
+// processamento, e dispara o download do HTML resultante — sem precisar
+// mudar nada no upload.php (ele continua devolvendo o arquivo pronto).
+(function () {
+  const MESES_NOME = ["janeiro","fevereiro","março","abril","maio","junho",
+                       "julho","agosto","setembro","outubro","novembro","dezembro"];
+  const ETAPAS_PROCESSAMENTO = [
+    "Extraindo os PDFs do zip…",
+    "Validando o modelo oficial…",
+    "Aplicando as regras de auditoria…",
+    "Montando o relatório…",
+  ];
+
+  const form = document.getElementById("form-upload");
+  const overlay = document.getElementById("overlay-progresso");
+  const anel = document.getElementById("anel-progresso");
+  const textoPorcentagem = document.getElementById("texto-porcentagem");
+  const titulo = document.getElementById("titulo-progresso");
+  const statusEtapa = document.getElementById("status-etapa");
+  const erroDetalhe = document.getElementById("erro-detalhe");
+  const botaoCancelar = document.getElementById("botao-cancelar");
+  const botaoFechar = document.getElementById("botao-fechar");
+  const botaoEnviar = document.getElementById("botao-enviar");
+
+  const CIRCUNFERENCIA = 327;
+  let xhrAtual = null;
+  let cicloEtapas = null;
+  let fase = "enviando"; // "enviando" | "processando"
+
+  function circunferenciaPara(percentual) {
+    return CIRCUNFERENCIA - (CIRCUNFERENCIA * percentual / 100);
+  }
+
+  function resetarOverlay() {
+    anel.classList.remove("indeterminado", "sucesso", "erro");
+    anel.querySelector(".traco").style.strokeDashoffset = String(CIRCUNFERENCIA);
+    textoPorcentagem.textContent = "0%";
+    erroDetalhe.style.display = "none";
+    erroDetalhe.textContent = "";
+    botaoCancelar.style.display = "";
+    botaoFechar.style.display = "none";
+    if (cicloEtapas) { clearInterval(cicloEtapas); cicloEtapas = null; }
+  }
+
+  function mostrarOverlay() {
+    resetarOverlay();
+    fase = "enviando";
+    overlay.classList.add("visivel");
+    titulo.textContent = "Enviando arquivo…";
+    statusEtapa.textContent = "Preparando envio…";
+  }
+
+  function esconderOverlay() {
+    overlay.classList.remove("visivel");
+  }
+
+  function iniciarEtapaProcessamento() {
+    if (fase === "processando") return; // evita duplicar o intervalo se o evento de progresso repetir em 100%
+    fase = "processando";
+    anel.classList.add("indeterminado");
+    textoPorcentagem.textContent = "";
+    titulo.textContent = "Processando os relatórios…";
+    botaoCancelar.style.display = "none";
+    let i = 0;
+    statusEtapa.textContent = ETAPAS_PROCESSAMENTO[0];
+    cicloEtapas = setInterval(function () {
+      i = (i + 1) % ETAPAS_PROCESSAMENTO.length;
+      statusEtapa.style.opacity = 0;
+      setTimeout(function () {
+        statusEtapa.textContent = ETAPAS_PROCESSAMENTO[i];
+        statusEtapa.style.opacity = 1;
+      }, 200);
+    }, 1700);
+  }
+
+  function nomeArquivoSaida() {
+    const mes = parseInt(document.getElementById("mes_referencia").value, 10);
+    const ano = document.getElementById("ano_referencia").value;
+    const mesStr = String(mes).padStart(2, "0");
+    return "auditoria-tutores-" + mesStr + "-" + ano + ".html";
+  }
+
+  function mostrarSucesso() {
+    if (cicloEtapas) { clearInterval(cicloEtapas); cicloEtapas = null; }
+    anel.classList.remove("indeterminado");
+    anel.classList.add("sucesso");
+    titulo.textContent = "Relatório gerado!";
+    statusEtapa.textContent = "O download deve começar automaticamente.";
+    botaoFechar.style.display = "";
+  }
+
+  function extrairMensagemErro(textoResposta) {
+    try {
+      const doc = new DOMParser().parseFromString(textoResposta, "text/html");
+      const p = doc.querySelector("p");
+      return p ? p.textContent : "Ocorreu um erro ao processar o relatório.";
+    } catch (e) {
+      return "Ocorreu um erro ao processar o relatório.";
+    }
+  }
+
+  function mostrarErro(mensagem) {
+    if (cicloEtapas) { clearInterval(cicloEtapas); cicloEtapas = null; }
+    anel.classList.remove("indeterminado");
+    anel.classList.add("erro");
+    titulo.textContent = "Não foi possível gerar o relatório";
+    statusEtapa.textContent = "";
+    erroDetalhe.textContent = mensagem;
+    erroDetalhe.style.display = "block";
+    botaoCancelar.style.display = "none";
+    botaoFechar.style.display = "";
+  }
+
+  form.addEventListener("submit", function (evento) {
+    evento.preventDefault();
+    if (!form.reportValidity()) return;
+
+    mostrarOverlay();
+    botaoEnviar.disabled = true;
+
+    const dados = new FormData(form);
+    const xhr = new XMLHttpRequest();
+    xhrAtual = xhr;
+
+    xhr.upload.addEventListener("progress", function (e) {
+      if (!e.lengthComputable || fase !== "enviando") return;
+      const pct = Math.round((e.loaded / e.total) * 100);
+      textoPorcentagem.textContent = pct + "%";
+      anel.querySelector(".traco").style.strokeDashoffset = String(circunferenciaPara(pct));
+      statusEtapa.textContent = "Enviando… " + pct + "%";
+      if (pct >= 100) iniciarEtapaProcessamento();
+    });
+
+    xhr.responseType = "blob";
+
+    xhr.addEventListener("load", function () {
+      botaoEnviar.disabled = false;
+      if (xhr.status === 200) {
+        mostrarSucesso();
+        const url = URL.createObjectURL(xhr.response);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = nomeArquivoSaida();
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+        setTimeout(esconderOverlay, 2200);
+      } else {
+        // resposta de erro vem como HTML; precisa ler o blob como texto.
+        const leitor = new FileReader();
+        leitor.onload = function () { mostrarErro(extrairMensagemErro(leitor.result)); };
+        leitor.onerror = function () { mostrarErro("Ocorreu um erro ao processar o relatório."); };
+        leitor.readAsText(xhr.response);
+      }
+    });
+
+    xhr.addEventListener("error", function () {
+      botaoEnviar.disabled = false;
+      mostrarErro("Falha de conexão com o servidor. Verifique sua internet e tente novamente.");
+    });
+
+    xhr.addEventListener("abort", function () {
+      botaoEnviar.disabled = false;
+      esconderOverlay();
+    });
+
+    xhr.open("POST", form.getAttribute("action"));
+    xhr.send(dados);
+  });
+
+  botaoCancelar.addEventListener("click", function () {
+    if (xhrAtual) xhrAtual.abort();
+  });
+
+  botaoFechar.addEventListener("click", esconderOverlay);
 })();
 </script>
 </body>
