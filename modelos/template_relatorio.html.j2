@@ -52,7 +52,6 @@
     cursor: pointer;
   }
   .grafico-linha .trilha:hover { filter: brightness(0.94); }
-  .grafico-linha .trilha.trilha-ativa { outline: 2px solid var(--accent); outline-offset: 1px; }
   .grafico-linha .preenchimento {
     position: absolute; top: 0; left: 0; height: 100%; border-radius: 4px;
     min-width: 4px;
@@ -98,6 +97,10 @@
   table.dados th:hover { color: var(--text); }
   table.dados th .seta { color: var(--muted-2); font-size: 0.75rem; }
   table.dados td.num, table.dados th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  table.dados tbody tr[data-tipo] { cursor: pointer; }
+  table.dados tbody tr[data-tipo]:hover { background: var(--bar-track); }
+  table.dados tbody tr.grafico-ativo { outline: 2px solid var(--accent); outline-offset: -2px; }
+  .grafico-linha .trilha.grafico-ativo { outline: 2px solid var(--accent); outline-offset: 1px; }
 
   .busca { margin-bottom: 16px; }
   .busca input {
@@ -153,19 +156,19 @@
 <main>
 
   <div class="cards">
-    <div class="card" data-filtro="">
+    <div class="card" data-filtro="" data-rotulo="Todos os relatórios recebidos">
       <div class="num">{{ resumo.total }}</div><div class="label">Relatórios recebidos</div>
     </div>
-    <div class="card critica" data-filtro="critica">
+    <div class="card critica" data-filtro="critica" data-rotulo="Com pendência crítica">
       <div class="num">{{ resumo.com_pendencia_critica }}</div><div class="label">Com pendência crítica</div>
     </div>
-    <div class="card aviso" data-filtro="sem_assinatura">
+    <div class="card aviso" data-filtro="sem_assinatura" data-rotulo="Sem assinatura digital">
       <div class="num">{{ resumo.sem_assinatura }}</div><div class="label">Sem assinatura digital</div>
     </div>
-    <div class="card critica" data-filtro="nao_processado">
+    <div class="card critica" data-filtro="nao_processado" data-rotulo="Não processados (modelo não reconhecido)">
       <div class="num">{{ resumo.nao_processados }}</div><div class="label">Não processados</div>
     </div>
-    <div class="card ok" data-filtro="ok">
+    <div class="card ok" data-filtro="ok" data-rotulo="Sem pendência crítica">
       <div class="num">{{ resumo.total - resumo.com_pendencia_critica }}</div><div class="label">Sem pendência crítica</div>
     </div>
   </div>
@@ -182,7 +185,7 @@
   {% endif %}
 
   <div class="secao">
-    <h3>Pendências críticas por curso/polo</h3>
+    <h3>Pendências críticas por curso</h3>
     {% for pasta, dados in resumo.por_pasta.items() %}
     <div class="grafico-linha">
       <span class="rotulo" title="{{ pasta }}">{{ pasta }}</span>
@@ -224,7 +227,8 @@
       </thead>
       <tbody>
         {% for codigo, dados in resumo.pendencias_por_tipo.items() %}
-        <tr>
+        <tr data-tipo="codigo" data-chave="{{ codigo }}"
+            data-rotulo="{{ dados.rotulo }}: {{ dados.quantidade }} ocorrência(s)">
           <td>{{ dados.rotulo }}</td>
           <td><span class="badge {{ dados.severidade }}">{{ dados.severidade }}</span></td>
           <td class="num">{{ dados.quantidade }}</td>
@@ -309,20 +313,33 @@
     return document.getElementById("busca-tutor").value.trim().toLowerCase();
   }
 
-  function tutorBateGrafico(item) {
-    if (!filtroGrafico) return true;
-    if (filtroGrafico.tipo === "polo") {
-      return item.getAttribute("data-polo") === filtroGrafico.chave &&
-             item.getAttribute("data-tem-critica") === "1";
+  function cssEscape(valor) {
+    return window.CSS && CSS.escape ? CSS.escape(valor) : valor.replace(/["\\]/g, "\\$&");
+  }
+
+  // Predicado único usado tanto pelo filtro quanto pelo tooltip — garante que
+  // "quem aparece no hover" é sempre exatamente "quem fica visível ao clicar".
+  function tutorBate(item, tipo, chave) {
+    if (tipo === "status") {
+      return !chave || item.getAttribute("data-status") === chave;
     }
-    if (filtroGrafico.tipo === "codigo") {
-      return !!item.querySelector('li[data-codigo="' + cssEscape(filtroGrafico.chave) + '"]');
+    if (tipo === "polo") {
+      return item.getAttribute("data-polo") === chave && item.getAttribute("data-tem-critica") === "1";
+    }
+    if (tipo === "codigo") {
+      return !!item.querySelector('li[data-codigo="' + cssEscape(chave) + '"]');
     }
     return true;
   }
 
-  function cssEscape(valor) {
-    return window.CSS && CSS.escape ? CSS.escape(valor) : valor.replace(/["\\]/g, "\\$&");
+  function tutoresQueBatem(tipo, chave) {
+    var lista = [];
+    document.querySelectorAll("#lista-tutores > .tutor").forEach(function (item) {
+      if (tutorBate(item, tipo, chave)) {
+        lista.push({ nome: item.getAttribute("data-nome"), curso: item.getAttribute("data-polo") || "—" });
+      }
+    });
+    return lista;
   }
 
   function limparDestaques() {
@@ -347,7 +364,7 @@
     var chip = document.getElementById("filtro-ativo-chip");
     var texto = document.getElementById("filtro-ativo-texto");
     if (filtroGrafico) {
-      texto.textContent = "Filtrando por gráfico: " + filtroGrafico.rotulo;
+      texto.textContent = "Filtrando: " + filtroGrafico.rotulo;
       chip.classList.add("visivel");
     } else {
       chip.classList.remove("visivel");
@@ -360,9 +377,9 @@
     var itens = document.querySelectorAll("#lista-tutores > .tutor");
     var visiveis = 0;
     itens.forEach(function (item) {
-      var bateStatus = !filtroStatus || item.getAttribute("data-status") === filtroStatus;
+      var bateStatus = !filtroStatus || tutorBate(item, "status", filtroStatus);
       var bateBusca = !busca || item.getAttribute("data-busca").indexOf(busca) !== -1;
-      var bateGrafico = tutorBateGrafico(item);
+      var bateGrafico = !filtroGrafico || tutorBate(item, filtroGrafico.tipo, filtroGrafico.chave);
       var mostra = bateStatus && bateBusca && bateGrafico;
       item.style.display = mostra ? "" : "none";
       if (mostra) {
@@ -380,44 +397,31 @@
 
   window.filtrarTutores = atualizarLista;
 
+  function marcarAtivo(tipo, chave) {
+    document.querySelectorAll(".grafico-ativo").forEach(function (el) {
+      el.classList.remove("grafico-ativo");
+    });
+    if (!tipo) return;
+    document.querySelectorAll('[data-tipo="' + tipo + '"][data-chave="' + cssEscape(chave) + '"]').forEach(function (el) {
+      el.classList.add("grafico-ativo");
+    });
+  }
+
   window.limparFiltroGrafico = function () {
     filtroGrafico = null;
-    document.querySelectorAll(".trilha.trilha-ativa").forEach(function (t) {
-      t.classList.remove("trilha-ativa");
-    });
+    marcarAtivo(null);
     atualizarLista();
   };
 
-  document.querySelectorAll(".card[data-filtro]").forEach(function (card) {
-    card.addEventListener("click", function () {
-      var alvo = card.getAttribute("data-filtro");
-      filtroStatus = (filtroStatus === alvo) ? "" : alvo;
-      document.querySelectorAll(".card[data-filtro]").forEach(function (c) {
-        c.classList.toggle("card-ativo", c === card && filtroStatus !== "");
-      });
-      atualizarLista();
-    });
-  });
-
-  // --- gráficos: hover mostra os tutores afetados, clique filtra a lista ---
+  // --- tooltip compartilhado por cards, barras e linhas de tabela ---
   var tooltip = document.getElementById("tooltip-grafico");
+  var MAX_NOMES_TOOLTIP = 12;
 
-  function tutoresQueBatem(tipo, chave) {
-    var nomes = [];
-    document.querySelectorAll("#lista-tutores > .tutor").forEach(function (item) {
-      var bate = tipo === "polo"
-        ? (item.getAttribute("data-polo") === chave && item.getAttribute("data-tem-critica") === "1")
-        : !!item.querySelector('li[data-codigo="' + cssEscape(chave) + '"]');
-      if (bate) nomes.push(item.getAttribute("data-nome"));
-    });
-    return nomes;
-  }
-
-  function mostrarTooltip(trilha, evento) {
-    var tipo = trilha.getAttribute("data-tipo");
-    var chave = trilha.getAttribute("data-chave");
-    var rotulo = trilha.getAttribute("data-rotulo");
-    var nomes = tutoresQueBatem(tipo, chave);
+  function mostrarTooltip(elemento, evento, tipoOverride, chaveOverride, rotuloOverride) {
+    var tipo = tipoOverride || elemento.getAttribute("data-tipo");
+    var chave = chaveOverride || elemento.getAttribute("data-chave");
+    var rotulo = rotuloOverride || elemento.getAttribute("data-rotulo");
+    var afetados = tutoresQueBatem(tipo, chave);
 
     tooltip.innerHTML = "";
     var titulo = document.createElement("div");
@@ -425,24 +429,45 @@
     titulo.textContent = rotulo;
     tooltip.appendChild(titulo);
 
-    if (nomes.length) {
-      var ul = document.createElement("ul");
-      nomes.slice(0, 8).forEach(function (nome) {
-        var li = document.createElement("li");
-        li.textContent = nome;
-        ul.appendChild(li);
+    if (afetados.length) {
+      var porCurso = {};
+      var ordemCursos = [];
+      afetados.forEach(function (t) {
+        if (!porCurso[t.curso]) { porCurso[t.curso] = []; ordemCursos.push(t.curso); }
+        porCurso[t.curso].push(t.nome);
       });
-      tooltip.appendChild(ul);
-      if (nomes.length > 8) {
+
+      var mostrados = 0;
+      for (var i = 0; i < ordemCursos.length && mostrados < MAX_NOMES_TOOLTIP; i++) {
+        var curso = ordemCursos[i];
+        var nomesCurso = porCurso[curso];
+        var cabecalho = document.createElement("div");
+        cabecalho.className = "titulo";
+        cabecalho.style.marginTop = "6px";
+        cabecalho.style.fontWeight = "600";
+        cabecalho.textContent = curso + " (" + nomesCurso.length + ")";
+        tooltip.appendChild(cabecalho);
+
+        var ul = document.createElement("ul");
+        nomesCurso.forEach(function (nome) {
+          if (mostrados >= MAX_NOMES_TOOLTIP) return;
+          var li = document.createElement("li");
+          li.textContent = nome;
+          ul.appendChild(li);
+          mostrados++;
+        });
+        tooltip.appendChild(ul);
+      }
+      if (afetados.length > mostrados) {
         var maisEl = document.createElement("div");
         maisEl.className = "dica";
-        maisEl.textContent = "+ " + (nomes.length - 8) + " outro(s)";
+        maisEl.textContent = "+ " + (afetados.length - mostrados) + " outro(s)";
         tooltip.appendChild(maisEl);
       }
     }
     var dica = document.createElement("div");
     dica.className = "dica";
-    dica.textContent = "Clique para filtrar a lista abaixo";
+    dica.textContent = "Clique para filtrar e detalhar abaixo";
     tooltip.appendChild(dica);
 
     tooltip.style.left = evento.clientX + "px";
@@ -450,29 +475,47 @@
     tooltip.classList.add("visivel");
   }
 
-  document.querySelectorAll(".trilha[data-tipo]").forEach(function (trilha) {
-    trilha.addEventListener("mouseenter", function (e) { mostrarTooltip(trilha, e); });
-    trilha.addEventListener("mousemove", function (e) {
+  function esconderTooltip() { tooltip.classList.remove("visivel"); }
+
+  function registrarHoverEClique(elemento, tipoFixo) {
+    elemento.addEventListener("mouseenter", function (e) { mostrarTooltip(elemento, e, tipoFixo); });
+    elemento.addEventListener("mousemove", function (e) {
       tooltip.style.left = e.clientX + "px";
       tooltip.style.top = e.clientY + "px";
     });
-    trilha.addEventListener("mouseleave", function () {
-      tooltip.classList.remove("visivel");
+    elemento.addEventListener("mouseleave", esconderTooltip);
+  }
+
+  // --- cards do topo (filtro por status) ---
+  document.querySelectorAll(".card[data-filtro]").forEach(function (card) {
+    registrarHoverEClique(card, "status");
+    card.addEventListener("click", function () {
+      var alvo = card.getAttribute("data-filtro");
+      filtroStatus = (filtroStatus === alvo) ? "" : alvo;
+      document.querySelectorAll(".card[data-filtro]").forEach(function (c) {
+        c.classList.toggle("card-ativo", c === card && filtroStatus !== "");
+      });
+      esconderTooltip();
+      atualizarLista();
+      if (filtroStatus) {
+        document.getElementById("lista-tutores").scrollIntoView({ behavior: "smooth", block: "start" });
+      }
     });
-    trilha.addEventListener("click", function () {
-      var tipo = trilha.getAttribute("data-tipo");
-      var chave = trilha.getAttribute("data-chave");
-      var rotulo = trilha.getAttribute("data-rotulo");
+  });
+
+  // --- barras dos gráficos e linhas da tabela de pendências (filtro por polo/código) ---
+  document.querySelectorAll(".trilha[data-tipo], table.dados tr[data-tipo]").forEach(function (elemento) {
+    registrarHoverEClique(elemento);
+    elemento.addEventListener("click", function () {
+      var tipo = elemento.getAttribute("data-tipo");
+      var chave = elemento.getAttribute("data-chave");
+      var rotulo = elemento.getAttribute("data-rotulo");
 
       var jaAtiva = filtroGrafico && filtroGrafico.tipo === tipo && filtroGrafico.chave === chave;
       filtroGrafico = jaAtiva ? null : { tipo: tipo, chave: chave, rotulo: rotulo };
+      marcarAtivo(filtroGrafico && filtroGrafico.tipo, filtroGrafico && filtroGrafico.chave);
 
-      document.querySelectorAll(".trilha.trilha-ativa").forEach(function (t) {
-        t.classList.remove("trilha-ativa");
-      });
-      if (filtroGrafico) trilha.classList.add("trilha-ativa");
-
-      tooltip.classList.remove("visivel");
+      esconderTooltip();
       atualizarLista();
 
       if (filtroGrafico) {

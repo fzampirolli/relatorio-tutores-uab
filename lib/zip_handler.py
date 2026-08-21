@@ -65,7 +65,10 @@ def extrair_pdfs(caminho_zip: str, diretorio_destino: str) -> list:
                 saida.write(cabecalho)
                 saida.write(origem.read())
 
-            subpasta = os.path.dirname(info.filename) or "(raiz)"
+            # Usa só o nome da pasta imediata (curso/polo), não o caminho completo —
+            # zips reais costumam ter uma pasta "wrapper" com o nome do próprio zip
+            # antes da pasta do curso (ex.: "Relatórios ... - julho-26/C10/arquivo.pdf").
+            subpasta = os.path.basename(os.path.dirname(info.filename)) or "(raiz)"
             extraidos.append((destino, subpasta))
 
     if not extraidos:
