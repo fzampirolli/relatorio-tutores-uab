@@ -1,0 +1,15 @@
+# Bloqueia acesso web a arquivos/pastas sensíveis quando o projeto é
+# implantado via "git clone" direto dentro do docroot público (ex.:
+# /var/www/html/relatorio-tutores-uab/). Sem isso, qualquer pessoa poderia
+# baixar o histórico completo do git (incluindo os PDFs de teste com CPF
+# real) direto pela URL, mesmo com o repositório privado no GitHub.
+#
+# Exige AllowOverride com FileInfo (ou All) no vhost do Apache. Se este
+# bloqueio não fizer efeito (confirme com curl -I na própria URL do .git),
+# peça ao administrador para bloquear no nível do vhost (mais confiável),
+# ou clone o projeto FORA do docroot e sirva só os arquivos necessários.
+#
+# Nota: <Directory>/<DirectoryMatch> não são permitidos dentro de .htaccess
+# (causam erro 500) — por isso o bloqueio usa RedirectMatch.
+RedirectMatch 404 "(^|/)\.git($|/)"
+RedirectMatch 404 "(^|/)\.(htaccess|htpasswd|user\.ini)$"
