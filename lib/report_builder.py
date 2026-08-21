@@ -1,6 +1,7 @@
 """Renderiza o relatório final de auditoria (HTML autocontido, sem
 dependências externas) a partir da lista de RelatorioTutor já processados."""
 
+from datetime import datetime
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, select_autoescape
@@ -34,4 +35,5 @@ def construir_html(relatorios: list, resumo: dict, mes_referencia: int, ano_refe
         ano_referencia=ano_referencia,
         nome_lote=nome_lote,
         gerado_em=gerado_em,
+        ano_atual=datetime.now().year,
     )

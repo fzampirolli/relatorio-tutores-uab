@@ -5,13 +5,14 @@
 <title>Auditoria de Relatórios de Tutores UAB — {{ nome_lote }}</title>
 <style>
   :root {
-    --bg: #f5f6f8; --panel: #fcfcfb; --text: #0b0b0b; --muted: #52514e; --muted-2: #898781;
-    --border: #e1e0d9;
+    --bg: #f5f4fc; --panel: #ffffff; --text: #232839; --muted: #62677d; --muted-2: #8b8fa3;
+    --border: #e6e2f5;
     --critica: #d03b3b; --critica-bg: #fdecea;
     --aviso: #8a5a00; --aviso-bg: #fff6e0;
     --ok: #0ca30c; --ok-bg: #e8f5e9;
-    --bar-critica: #d03b3b; --bar-aviso: #fab219; --bar-track: #eceae2;
-    --accent: #1d4ed8;
+    --bar-critica: #d03b3b; --bar-aviso: #fab219; --bar-track: #ece9f7;
+    --accent: #6366f1; --accent-forte: #4f46e5;
+    --hero-de: #c7d2fe; --hero-para: #ddd6fe; --hero-texto: #312e81; --hero-texto-2: #4338ca;
   }
   * { box-sizing: border-box; }
   body {
@@ -19,12 +20,21 @@
     font-family: -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
     line-height: 1.45;
   }
-  header {
-    background: var(--panel); border-bottom: 1px solid var(--border);
-    padding: 24px 32px;
+  a { color: var(--accent-forte); }
+
+  .topo-institucional {
+    background: var(--text); color: #d6d9ea; font-size: 0.76rem;
+    padding: 6px 20px; text-align: center;
   }
-  header h1 { margin: 0 0 4px; font-size: 1.4rem; }
-  header p { margin: 0; color: var(--muted); font-size: 0.9rem; }
+  .topo-institucional a { color: #fff; text-decoration: none; }
+  .topo-institucional a:hover { text-decoration: underline; }
+
+  header.hero {
+    background: linear-gradient(135deg, var(--hero-de) 0%, var(--hero-para) 100%);
+    color: var(--hero-texto); padding: 34px 32px 30px; text-align: center;
+  }
+  header.hero h1 { margin: 0 0 6px; font-size: 1.5rem; }
+  header.hero p { margin: 0; color: var(--hero-texto-2); font-size: 0.92rem; }
   main { max-width: 1100px; margin: 24px auto; padding: 0 16px 64px; }
 
   .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 28px; }
@@ -36,6 +46,9 @@
   .card.card-ativo { outline: 2px solid var(--accent); outline-offset: -1px; }
   .card .num { font-size: 1.8rem; font-weight: 600; font-variant-numeric: proportional-nums; }
   .card .label { font-size: 0.8rem; color: var(--muted); }
+  .card.critica { background: var(--critica-bg); border-color: transparent; }
+  .card.aviso { background: var(--aviso-bg); border-color: transparent; }
+  .card.ok { background: var(--ok-bg); border-color: transparent; }
   .card.critica .num { color: var(--critica); }
   .card.aviso .num { color: var(--aviso); }
   .card.ok .num { color: var(--ok); }
@@ -134,7 +147,9 @@
 
   .duplicados { background: var(--critica-bg); border: 1px solid var(--critica); border-radius: 10px; padding: 16px 20px; margin-bottom: 28px; color: var(--critica); }
 
-  footer { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 24px; }
+  footer { text-align: center; color: var(--muted); font-size: 0.82rem; padding: 28px 20px; border-top: 1px solid var(--border); margin-top: 12px; }
+  footer p { margin: 4px 0; }
+  footer a { color: var(--muted); }
 
   @media (prefers-color-scheme: dark) {
     :root {
@@ -144,12 +159,21 @@
       --aviso: #fab219; --aviso-bg: #3a2f0f;
       --ok: #0ca30c; --ok-bg: #12301a;
       --bar-track: #2c2c2a;
+      --accent: #818cf8; --accent-forte: #a5b4fc;
+      --hero-de: #312e81; --hero-para: #4c1d95; --hero-texto: #e0e7ff; --hero-texto-2: #c7d2fe;
     }
   }
 </style>
 </head>
 <body>
-<header>
+
+<div class="topo-institucional">
+  <a href="https://www.ufabc.edu.br/" target="_blank" rel="noopener">UFABC</a> ·
+  <a href="https://site.ufabc.edu.br/uab-2/sobre-uab" target="_blank" rel="noopener">Universidade Aberta do Brasil (UAB)</a> ·
+  <a href="https://site.ufabc.edu.br/sobre/apresentacao" target="_blank" rel="noopener">SITE — Superintendência de Inovações e Tecnologias Educacionais</a>
+</div>
+
+<header class="hero">
   <h1>Auditoria de Relatórios de Tutores UAB</h1>
   <p>Lote: {{ nome_lote }} · Referência: {{ "%02d"|format(mes_referencia) }}/{{ ano_referencia }} · Gerado em {{ gerado_em }}</p>
 </header>
@@ -301,7 +325,10 @@
 </main>
 <div class="tooltip-grafico" id="tooltip-grafico"></div>
 <footer>
-  Gerado automaticamente por relatorio-tutores-uab. Nenhum arquivo enviado permanece no servidor após esta geração.
+  <p>Gerado automaticamente por relatorio-tutores-uab. Nenhum arquivo enviado permanece no servidor após esta geração.</p>
+  <p>Software livre sob <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">licença GNU AGPLv3</a></p>
+  <p>© {{ ano_atual }} Francisco de Assis Zampirolli — <a href="https://sites.google.com/site/fzampirolli/" target="_blank" rel="noopener">sites.google.com/site/fzampirolli</a></p>
+  <p><a href="https://site.ufabc.edu.br/sobre/apresentacao" target="_blank" rel="noopener">SITE</a>/UAB — <a href="https://www.ufabc.edu.br/" target="_blank" rel="noopener">UFABC</a> · Av. dos Estados, 5001, Bloco L, 3º andar · Santo André - SP</p>
 </footer>
 
 <script>

@@ -11,10 +11,12 @@ $ano_atual = date("Y");
 <meta name="description" content="Envie o zip mensal dos relatórios de tutoria UAB/UFABC e receba um relatório de auditoria em HTML com pendências, gráficos e detalhamento por tutor.">
 <style>
   :root {
-    --bg: #f5f6f8; --panel: #ffffff; --text: #14181f; --muted: #5b6472; --muted-2: #838ea1;
-    --border: #e1e4e9; --accent: #1d4ed8; --accent-bg: #eef2ff;
+    --bg: #f5f4fc; --panel: #ffffff; --text: #232839; --muted: #62677d; --muted-2: #8b8fa3;
+    --border: #e6e2f5; --accent: #6366f1; --accent-bg: #eef0fe;
     --aviso-bg: #fff6e0; --aviso: #8a5a00;
     --ok-bg: #e8f5e9; --ok: #1e7d32;
+    --hero-de: #c7d2fe; --hero-para: #ddd6fe; --hero-texto: #312e81; --hero-texto-2: #4338ca;
+    --info-texto: #3730a3; --privacidade-texto: #14532d;
   }
   * { box-sizing: border-box; }
   body {
@@ -32,11 +34,11 @@ $ano_atual = date("Y");
   .topo-institucional a:hover { text-decoration: underline; }
 
   header.hero {
-    background: linear-gradient(135deg, #1d4ed8 0%, #1e3a8a 100%);
-    color: #fff; padding: 48px 20px 40px; text-align: center;
+    background: linear-gradient(135deg, var(--hero-de) 0%, var(--hero-para) 100%);
+    color: var(--hero-texto); padding: 48px 20px 40px; text-align: center;
   }
   header.hero h1 { margin: 0 0 10px; font-size: 1.7rem; }
-  header.hero p { margin: 0 auto; max-width: 640px; color: #dbe4ff; font-size: 1rem; }
+  header.hero p { margin: 0 auto; max-width: 640px; color: var(--hero-texto-2); font-size: 1rem; }
 
   main { max-width: 880px; margin: -28px auto 0; padding: 0 20px 56px; }
 
@@ -70,16 +72,16 @@ $ano_atual = date("Y");
     margin-top: 22px; width: 100%; padding: 12px; border: 0; border-radius: 8px;
     background: var(--accent); color: #fff; font-size: 1rem; font-weight: 600; cursor: pointer;
   }
-  button:hover { background: #1e40af; }
+  button:hover { background: #4f46e5; }
 
   .aviso { background: var(--aviso-bg); color: var(--aviso); border-radius: 8px; padding: 10px 14px; font-size: 0.85rem; margin-top: 16px; }
   .info-caixa {
     background: var(--accent-bg); border-radius: 10px; padding: 14px 16px; font-size: 0.86rem;
-    color: #1e3a8a; margin-top: 14px;
+    color: var(--info-texto); margin-top: 14px;
   }
   .info-caixa strong { display: block; margin-bottom: 4px; }
   .privacidade {
-    background: var(--ok-bg); color: #14532d; border-radius: 10px; padding: 14px 16px;
+    background: var(--ok-bg); color: var(--privacidade-texto); border-radius: 10px; padding: 14px 16px;
     font-size: 0.86rem; margin-top: 12px;
   }
   .privacidade strong { display: block; margin-bottom: 4px; color: var(--ok); }
@@ -98,7 +100,9 @@ $ano_atual = date("Y");
   @media (prefers-color-scheme: dark) {
     :root {
       --bg: #0f1115; --panel: #171a21; --text: #e9ecf2; --muted: #a7afc0; --muted-2: #7a8296;
-      --border: #262b35; --accent-bg: #1b2440; --aviso-bg: #332a0c; --ok-bg: #12301f;
+      --border: #262b35; --accent: #818cf8; --accent-bg: #1b2440; --aviso-bg: #332a0c; --ok-bg: #12301f;
+      --hero-de: #312e81; --hero-para: #4c1d95; --hero-texto: #e0e7ff; --hero-texto-2: #c7d2fe;
+      --info-texto: #c7d2fe; --privacidade-texto: #86efac;
     }
     input[type=file], select, input[type=number] { background: #10131a; color: var(--text); border-color: #333a48; }
     code { background: #232833; }
