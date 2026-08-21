@@ -208,7 +208,7 @@ def gerar():
 
     doc.set_metadata({
         "title": "Modelo — Relatório Mensal de Atividades de Tutoria UAB",
-        "author": "NETEL/UAB - UFABC",
+        "author": "SITE/UAB - UFABC",
         "subject": "Modelo em branco para preenchimento pelos tutores UAB",
     })
     SAIDA.parent.mkdir(parents=True, exist_ok=True)

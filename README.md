@@ -1,7 +1,8 @@
 # relatorio-tutores-uab
 
 Auditoria automática dos Relatórios Mensais de Atividades de Tutoria UAB
-(NETEL/UFABC). Recebe um `.zip` com os relatórios em PDF enviados pelos
+(SITE/UFABC — Superintendência de Inovações e Tecnologias Educacionais).
+Recebe um `.zip` com os relatórios em PDF enviados pelos
 tutores, valida se cada PDF é o modelo oficial, extrai os campos relevantes
 e gera um relatório de auditoria em HTML — com destaque para pendências
 (sem assinatura, mês divergente, risco de evasão não comunicado à

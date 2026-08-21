@@ -177,7 +177,7 @@ $ano_atual = date("Y");
 <div class="topo-institucional">
   <a href="https://www.ufabc.edu.br/" target="_blank" rel="noopener">UFABC</a> ·
   <a href="https://site.ufabc.edu.br/uab-2/sobre-uab" target="_blank" rel="noopener">Universidade Aberta do Brasil (UAB)</a> ·
-  NETEL — Núcleo Educacional de Tecnologias e Línguas
+  <a href="https://site.ufabc.edu.br/sobre/apresentacao" target="_blank" rel="noopener">SITE — Superintendência de Inovações e Tecnologias Educacionais</a>
 </div>
 
 <header class="hero">
@@ -288,7 +288,7 @@ $ano_atual = date("Y");
 <footer>
   <p>relatorio-tutores-uab · Software livre sob <a href="https://www.gnu.org/licenses/agpl-3.0.html" target="_blank" rel="noopener">licença GNU AGPLv3</a></p>
   <p>© <?= htmlspecialchars($ano_atual) ?> Francisco de Assis Zampirolli — <a href="https://sites.google.com/site/fzampirolli/" target="_blank" rel="noopener">sites.google.com/site/fzampirolli</a></p>
-  <p>NETEL/UAB — UFABC · Av. dos Estados, 5001, Bloco L, 3º andar · Santo André - SP</p>
+  <p><a href="https://site.ufabc.edu.br/sobre/apresentacao" target="_blank" rel="noopener">SITE</a>/UAB — <a href="https://www.ufabc.edu.br/" target="_blank" rel="noopener">UFABC</a> · Av. dos Estados, 5001, Bloco L, 3º andar · Santo André - SP</p>
 </footer>
 
 <div class="overlay-progresso" id="overlay-progresso">
